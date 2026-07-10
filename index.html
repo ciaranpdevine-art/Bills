@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>The Ledger — Household Bills &amp; Spending</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#171F2B;
+    --ink-2:#1F2A3A;
+    --ink-3:#28364A;
+    --parchment:#F3EDE0;
+    --parchment-dim:#C9C2B2;
+    --brass:#C79A56;
+    --brass-dim:#8A6F42;
+    --sage:#7BA383;
+    --rust:#C15B3E;
+    --slate:#8496A8;
+    --hairline: rgba(243,237,224,0.12);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--ink);
+    color:var(--parchment);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .display{font-family:'Fraunces',serif;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  #app{max-width:520px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;position:relative;}
+
+  /* ---------- Gate screen ---------- */
+  #gate{
+    min-height:100vh;display:flex;flex-direction:column;justify-content:center;
+    padding:32px 28px 60px;max-width:520px;margin:0 auto;
+  }
+  #gate .mark{font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--brass);margin-bottom:10px;}
+  #gate h1{font-size:38px;font-weight:600;margin:0 0 8px;line-height:1.05;}
+  #gate p.sub{color:var(--slate);font-size:15px;line-height:1.5;margin:0 0 32px;max-width:38ch;}
+  #gate label{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--parchment-dim);display:block;margin-bottom:8px;}
+  #gate input{
+    width:100%;background:var(--ink-2);border:1px solid var(--hairline);color:var(--parchment);
+    font-family:'IBM Plex Mono',monospace;font-size:18px;letter-spacing:.05em;padding:14px 16px;border-radius:10px;
+    margin-bottom:6px;
+  }
+  #gate input::placeholder{color:var(--slate);}
+  #gate .hint{font-size:12.5px;color:var(--slate);margin-bottom:24px;}
+  #gate button{
+    width:100%;background:var(--brass);color:var(--ink);border:none;font-weight:600;font-size:15px;
+    padding:15px;border-radius:10px;cursor:pointer;font-family:'Inter',sans-serif;
+  }
+  #gate button:active{background:var(--brass-dim);}
+  #gate .err{color:var(--rust);font-size:13px;margin-top:12px;min-height:16px;}
+  #gate .divider{display:flex;align-items:center;gap:12px;margin:22px 0;color:var(--slate);font-size:12px;text-transform:uppercase;letter-spacing:.1em;}
+  #gate .divider::before,#gate .divider::after{content:"";flex:1;height:1px;background:var(--hairline);}
+
+  /* ---------- Top bar ---------- */
+  #topbar{
+    padding:22px 20px 16px;display:flex;align-items:center;justify-content:space-between;
+    position:sticky;top:0;background:var(--ink);z-index:10;border-bottom:1px solid var(--hairline);
+  }
+  #topbar .brand{display:flex;align-items:center;gap:10px;}
+  #topbar .brand .glyph{width:30px;height:30px;border-radius:7px;background:linear-gradient(155deg,var(--brass),var(--brass-dim));display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:700;font-size:15px;color:var(--ink);}
+  #topbar h2{font-size:16px;margin:0;font-weight:600;}
+  #month-switch{display:flex;align-items:center;gap:10px;}
+  #month-switch button{background:none;border:1px solid var(--hairline);color:var(--parchment-dim);width:28px;height:28px;border-radius:7px;cursor:pointer;font-size:14px;}
+  #month-label{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--parchment-dim);min-width:82px;text-align:center;}
+
+  #local-banner{
+    background:rgba(199,154,86,0.12);color:var(--brass);font-size:12px;text-align:center;
+    padding:8px 16px;border-bottom:1px solid var(--hairline);
+  }
+  main{flex:1;padding:20px 20px 100px;}
+  .view{display:none;}
+  .view.active{display:block;}
+
+  /* ---------- Dashboard ---------- */
+  .stat-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;}
+  .stat-card{
+    background:var(--ink-2);border:1px solid var(--hairline);border-radius:14px;padding:16px;
+  }
+  .stat-card .label{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--slate);margin-bottom:8px;}
+  .stat-card .value{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:600;}
+  .stat-card .value.warn{color:var(--rust);}
+  .stat-card .value.good{color:var(--sage);}
+  .stat-card .sub{font-size:11.5px;color:var(--slate);margin-top:4px;}
+
+  .section-head{display:flex;align-items:baseline;justify-content:space-between;margin:26px 0 12px;}
+  .section-head h3{font-family:'Fraunces',serif;font-size:18px;font-weight:600;margin:0;}
+  .section-head a{font-size:12.5px;color:var(--brass);text-decoration:none;cursor:pointer;}
+
+  .ledger{border:1px solid var(--hairline);border-radius:14px;overflow:hidden;background:var(--ink-2);}
+  .ledger-row{
+    display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--hairline);cursor:pointer;
+  }
+  .ledger-row:last-child{border-bottom:none;}
+  .ledger-row .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .ledger-row .info{flex:1;min-width:0;cursor:pointer;}
+  .ledger-row .name{font-size:14.5px;font-weight:500;}
+  .ledger-row .meta{font-size:12px;color:var(--slate);margin-top:2px;}
+  .ledger-row .amt{font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;white-space:nowrap;}
+  .ledger-row .amt.paid{color:var(--sage);}
+  .ledger-row .amt.due{color:var(--parchment);}
+  .pay-toggle{
+    display:flex;flex-direction:column;align-items:flex-end;gap:2px;background:none;border:none;
+    cursor:pointer;padding:2px 0 2px 10px;flex-shrink:0;
+  }
+  .pay-toggle .pay-amt{font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;color:var(--parchment);white-space:nowrap;}
+  .pay-toggle .pay-state{
+    font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--slate);
+    border:1px solid var(--hairline);border-radius:20px;padding:2px 8px;
+  }
+  .pay-toggle.paid .pay-amt{color:var(--sage);}
+  .pay-toggle.paid .pay-state{color:var(--sage);border-color:rgba(123,163,131,0.4);background:rgba(123,163,131,0.1);}
+  .ledger-row .running{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--slate);white-space:nowrap;width:64px;text-align:right;}
+  .empty-note{padding:22px 16px;text-align:center;color:var(--slate);font-size:13.5px;}
+
+  /* category bars */
+  .cat-bar-row{margin-bottom:11px;}
+  .cat-bar-row .top{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px;}
+  .cat-bar-row .top .name{color:var(--parchment-dim);}
+  .cat-bar-row .top .amt{font-family:'IBM Plex Mono',monospace;color:var(--parchment);}
+  .cat-track{height:6px;border-radius:4px;background:var(--ink-3);overflow:hidden;}
+  .cat-fill{height:100%;border-radius:4px;}
+
+  /* ---------- Bills / Expenses list views ---------- */
+  .filter-row{display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;padding-bottom:2px;}
+  .chip{
+    flex-shrink:0;font-size:12.5px;padding:7px 13px;border-radius:20px;border:1px solid var(--hairline);
+    color:var(--parchment-dim);background:var(--ink-2);cursor:pointer;white-space:nowrap;
+  }
+  .chip.active{background:var(--brass);color:var(--ink);border-color:var(--brass);font-weight:600;}
+
+  /* ---------- FAB ---------- */
+  #fab{
+    position:fixed;bottom:88px;right:calc(50% - 260px + 20px);
+    width:54px;height:54px;border-radius:16px;background:var(--brass);color:var(--ink);border:none;
+    font-size:26px;box-shadow:0 8px 20px rgba(0,0,0,0.35);cursor:pointer;z-index:20;
+    display:flex;align-items:center;justify-content:center;
+  }
+  @media (max-width:560px){ #fab{right:20px;} }
+
+  /* ---------- Bottom nav ---------- */
+  #tabbar{
+    position:fixed;bottom:0;left:0;right:0;background:var(--ink-2);border-top:1px solid var(--hairline);
+    display:flex;max-width:520px;margin:0 auto;z-index:15;
+  }
+  #tabbar button{
+    flex:1;background:none;border:none;padding:12px 4px 10px;color:var(--slate);cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;gap:4px;font-family:'Inter',sans-serif;font-size:11px;
+  }
+  #tabbar button svg{width:20px;height:20px;stroke:var(--slate);fill:none;stroke-width:1.7;}
+  #tabbar button.active{color:var(--brass);}
+  #tabbar button.active svg{stroke:var(--brass);}
+
+  /* ---------- Modal ---------- */
+  #modal-backdrop{
+    position:fixed;inset:0;background:rgba(10,14,20,0.65);z-index:30;display:none;
+    align-items:flex-end;justify-content:center;
+  }
+  #modal-backdrop.show{display:flex;}
+  #modal{
+    background:var(--ink-2);width:100%;max-width:520px;border-radius:20px 20px 0 0;
+    padding:22px 20px calc(22px + env(safe-area-inset-bottom));max-height:88vh;overflow-y:auto;
+    border-top:1px solid var(--hairline);
+  }
+  #modal h3{font-family:'Fraunces',serif;font-size:19px;margin:0 0 18px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--slate);margin-bottom:6px;}
+  .field input, .field select{
+    width:100%;background:var(--ink);border:1px solid var(--hairline);color:var(--parchment);
+    font-size:15px;padding:12px 13px;border-radius:9px;font-family:'Inter',sans-serif;
+  }
+  .field input.mono-input{font-family:'IBM Plex Mono',monospace;}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;padding:4px 0 14px;}
+  .toggle-row span{font-size:14px;color:var(--parchment-dim);}
+  .switch{width:42px;height:24px;border-radius:14px;background:var(--ink-3);position:relative;cursor:pointer;flex-shrink:0;}
+  .switch.on{background:var(--sage);}
+  .switch .knob{width:18px;height:18px;border-radius:50%;background:var(--parchment);position:absolute;top:3px;left:3px;transition:left .15s;}
+  .switch.on .knob{left:21px;}
+  .modal-actions{display:flex;gap:10px;margin-top:20px;}
+  .btn{flex:1;padding:14px;border-radius:10px;border:none;font-weight:600;font-size:14.5px;cursor:pointer;font-family:'Inter',sans-serif;}
+  .btn-primary{background:var(--brass);color:var(--ink);}
+  .btn-ghost{background:none;border:1px solid var(--hairline);color:var(--parchment-dim);}
+  .btn-danger{background:none;color:var(--rust);border:1px solid rgba(193,91,62,0.35);}
+
+  #toast{
+    position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:var(--parchment);color:var(--ink);
+    padding:10px 18px;border-radius:24px;font-size:13.5px;font-weight:500;z-index:40;opacity:0;
+    transition:opacity .25s, transform .25s;pointer-events:none;
+  }
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(-6px);}
+
+  .icon-btn{background:none;border:none;color:var(--slate);cursor:pointer;padding:6px;}
+
+  .import-list{max-height:44vh;overflow-y:auto;border:1px solid var(--hairline);border-radius:12px;margin-top:6px;}
+  .import-row{
+    display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--hairline);
+    font-size:14px;cursor:pointer;
+  }
+  .import-row:last-child{border-bottom:none;}
+  .import-row input{width:17px;height:17px;accent-color:var(--brass);flex-shrink:0;}
+  .import-row .import-name{flex:1;}
+  .import-row .import-amt{font-size:13.5px;color:var(--parchment-dim);}
+  .import-row .import-tag{font-size:10.5px;color:var(--slate);text-transform:uppercase;letter-spacing:.05em;}
+  .import-row.already{opacity:0.55;}
+  ::-webkit-scrollbar{display:none;}
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="mark">The Ledger</div>
+  <h1 class="display">Household bills,<br>kept in one place.</h1>
+  <p class="sub">Enter your household code. Anyone with the same code shares the same ledger — use it with your partner.</p>
+  <label>Household code</label>
+  <input id="code-input" type="text" placeholder="e.g. maple-house" autocapitalize="off" autocorrect="off" spellcheck="false">
+  <div class="hint">New here? Just make one up — typing it below creates it.</div>
+  <button id="enter-btn">Open the ledger</button>
+  <div class="err" id="gate-err"></div>
+</div>
+
+<div id="app" style="display:none;">
+  <div id="topbar">
+    <div class="brand">
+      <div class="glyph">₡</div>
+      <h2 id="household-title">The Ledger</h2>
+    </div>
+    <div id="month-switch">
+      <button id="prev-month">‹</button>
+      <span id="month-label" class="mono">July 2026</span>
+      <button id="next-month">›</button>
+    </div>
+  </div>
+  <div id="local-banner" style="display:none;">On this device only — add your Firebase config to sync across devices.</div>
+
+  <main>
+    <!-- DASHBOARD -->
+    <div class="view active" id="view-dashboard">
+      <div class="stat-row">
+        <div class="stat-card">
+          <div class="label">Bills this month</div>
+          <div class="value" id="stat-bills">£0.00</div>
+          <div class="sub" id="stat-bills-sub">0 of 0 paid</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Spending</div>
+          <div class="value" id="stat-spending">£0.00</div>
+          <div class="sub" id="stat-spending-sub">this month</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Total out the door</div>
+          <div class="value" id="stat-total">£0.00</div>
+          <div class="sub">bills + spending</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Still owed</div>
+          <div class="value" id="stat-owed">£0.00</div>
+          <div class="sub" id="stat-owed-sub">on unpaid bills</div>
+        </div>
+      </div>
+
+      <div class="section-head">
+        <h3>Upcoming bills</h3>
+        <a id="see-all-bills">See all →</a>
+      </div>
+      <div class="ledger" id="upcoming-list"></div>
+
+      <div class="section-head">
+        <h3>Where it's going</h3>
+      </div>
+      <div id="category-breakdown"></div>
+
+      <div class="section-head">
+        <h3>Recent spending</h3>
+        <a id="see-all-expenses">See all →</a>
+      </div>
+      <div class="ledger" id="recent-expenses"></div>
+    </div>
+
+    <!-- BILLS -->
+    <div class="view" id="view-bills">
+      <div class="filter-row" id="bills-filter">
+        <div class="chip active" data-filter="all">All</div>
+        <div class="chip" data-filter="unpaid">Unpaid</div>
+        <div class="chip" data-filter="paid">Paid</div>
+      </div>
+      <div class="ledger" id="bills-list"></div>
+      <button id="import-bills-btn" class="btn btn-ghost" style="margin-top:16px;width:100%;">Import bills from a list</button>
+    </div>
+
+    <!-- EXPENSES -->
+    <div class="view" id="view-expenses">
+      <div class="filter-row" id="expense-filter"></div>
+      <div class="ledger" id="expenses-list"></div>
+    </div>
+  </main>
+
+  <button id="fab">+</button>
+
+  <div id="tabbar">
+    <button class="active" data-view="dashboard">
+      <svg viewBox="0 0 24 24"><path d="M3 12l9-8 9 8"/><path d="M5 10v9h14v-9"/></svg>
+      Dashboard
+    </button>
+    <button data-view="bills">
+      <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h4"/></svg>
+      Bills
+    </button>
+    <button data-view="expenses">
+      <svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      Spending
+    </button>
+  </div>
+</div>
+
+<div id="modal-backdrop">
+  <div id="modal"></div>
+</div>
+
+<div id="toast"></div>
+
+<script type="module">
+/* ============================================================
+   THE LEDGER — household bills & spending tracker
+   Setup:
+   1. Create a Firebase project (console.firebase.google.com)
+   2. Enable Firestore (test mode is fine to start) and Anonymous
+      Authentication (Build > Authentication > Sign-in method)
+   3. Paste your web app config into FIREBASE_CONFIG below
+   4. Open this file in a browser, or host it (see SETUP.md)
+
+   Note on security: the "household code" is a shared Firestore
+   document ID, not a password. Anyone who knows the code (or can
+   read this file's source) can read/write that household's data.
+   Fine for a private household between two people; keep the code
+   non-guessable if you want more privacy, and see SETUP.md for
+   tightening Firestore rules further.
+   ============================================================ */
+
+const FIREBASE_CONFIG = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID",
+};
+
+const CATEGORIES = [
+  {id:"housing", name:"Housing", color:"#C79A56"},
+  {id:"utilities", name:"Utilities", color:"#7BA383"},
+  {id:"insurance", name:"Insurance", color:"#8496A8"},
+  {id:"subscriptions", name:"Subscriptions", color:"#9C7FBF"},
+  {id:"debt", name:"Debt", color:"#C15B3E"},
+  {id:"food", name:"Food", color:"#D89B5C"},
+  {id:"transport", name:"Transport", color:"#5C9FD8"},
+  {id:"shopping", name:"Shopping", color:"#D87CA0"},
+  {id:"health", name:"Health", color:"#6FBF9C"},
+  {id:"fun", name:"Fun", color:"#E0C15C"},
+  {id:"other", name:"Other", color:"#8496A8"},
+];
+const catById = id => CATEGORIES.find(c=>c.id===id) || CATEGORIES[CATEGORIES.length-1];
+
+// Extracted from the user's own spreadsheet screenshot (Dec column = most recent month shown).
+// A few of these vary month to month in the original sheet (Insurance Yaris, BT, Amazon Prime) —
+// imported at the Dec amount as a starting point; adjust as needed.
+const STARTER_BILLS = [
+  {name:"Mortgage", amount:687, category:"housing"},
+  {name:"Rates", amount:114, category:"housing"},
+  {name:"Life Ins KH", amount:38, category:"insurance"},
+  {name:"Critical Illness KH", amount:24, category:"insurance"},
+  {name:"Life Ins CD", amount:14, category:"insurance"},
+  {name:"Critical Illness CD", amount:7, category:"insurance"},
+  {name:"Home Ins", amount:28, category:"insurance"},
+  {name:"Insurance Q5", amount:41, category:"insurance"},
+  {name:"Insurance Yaris", amount:43, category:"insurance"},
+  {name:"Car Tax Q5", amount:21, category:"transport"},
+  {name:"Car Tax Yaris", amount:17, category:"transport"},
+  {name:"Petrol Q5", amount:100, category:"transport"},
+  {name:"Petrol Yaris", amount:20, category:"transport"},
+  {name:"Monzo", amount:200, category:"debt"},
+  {name:"Credit Union", amount:200, category:"debt"},
+  {name:"Shopping", amount:500, category:"shopping"},
+  {name:"o2 Airtime", amount:48, category:"subscriptions"},
+  {name:"Sky", amount:74, category:"subscriptions"},
+  {name:"BT", amount:50, category:"subscriptions"},
+  {name:"Spotify", amount:20, category:"subscriptions"},
+  {name:"PMB", amount:17, category:"health"},
+  {name:"TV License", amount:15, category:"subscriptions"},
+  {name:"Amazon Prime", amount:0, category:"subscriptions"},
+  {name:"Electricity", amount:100, category:"utilities"},
+  {name:"Oil", amount:50, category:"utilities"},
+  {name:"Birthdays", amount:50, category:"fun"},
+];
+
+const LOCAL_MODE = FIREBASE_CONFIG.apiKey === "YOUR_API_KEY";
+
+const pad2 = n => String(n).padStart(2,"0");
+const todayYM = () => { const d = new Date(); return d.getFullYear() + "-" + pad2(d.getMonth()+1); };
+const todayISO = () => { const d = new Date(); return d.getFullYear() + "-" + pad2(d.getMonth()+1) + "-" + pad2(d.getDate()); };
+
+let db, auth, householdId, unsubBills=null, unsubExpenses=null;
+let bills = [];
+let expenses = [];
+let currentMonth = todayYM(); // e.g. "2026-07", based on local time
+let currentView = "dashboard";
+let billFilter = "all";
+let expenseFilter = "all";
+let editingBill = null;
+let editingExpense = null;
+
+const $ = sel => document.querySelector(sel);
+const fmt = n => "£" + (Math.round(n*100)/100).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+const monthLabel = ym => {
+  const [y,m] = ym.split("-").map(Number);
+  return new Date(y, m-1, 1).toLocaleDateString(undefined,{month:"long", year:"numeric"});
+};
+
+function showToast(msg){
+  const t = $("#toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"), 1800);
+}
+
+function showFatalError(msg){
+  $("#gate-err").textContent = msg;
+}
+
+/* ---------------- Firebase init (skipped entirely in local mode) ---------------- */
+let fb = {};
+if (!LOCAL_MODE) {
+  try {
+    const appMod = await import("https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js");
+    const authMod = await import("https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js");
+    const fsMod = await import("https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js");
+    fb.initializeApp = appMod.initializeApp;
+    fb.getAuth = authMod.getAuth;
+    fb.signInAnonymously = authMod.signInAnonymously;
+    fb.onAuthStateChanged = authMod.onAuthStateChanged;
+    fb.getFirestore = fsMod.getFirestore;
+    fb.doc = fsMod.doc;
+    fb.setDoc = fsMod.setDoc;
+    fb.deleteDoc = fsMod.deleteDoc;
+    fb.collection = fsMod.collection;
+    fb.onSnapshot = fsMod.onSnapshot;
+  } catch (e) {
+    showFatalError("Couldn't load Firebase from the network (" + e.message + "). Check your connection and reload.");
+  }
+}
+
+async function ensureFirebaseReady(){
+  if (LOCAL_MODE) return; // nothing to connect to yet — data lives on this device only
+  if (!fb.initializeApp) throw new Error("Firebase library failed to load.");
+  if (!db) {
+    const app = fb.initializeApp(FIREBASE_CONFIG);
+    auth = fb.getAuth(app);
+    db = fb.getFirestore(app);
+    await new Promise((resolve, reject)=>{
+      fb.onAuthStateChanged(auth, user=>{ if(user) resolve(); });
+      fb.signInAnonymously(auth).catch(err=>{
+        reject(new Error("Sign-in failed: " + err.message + ". Check that Anonymous auth is enabled in your Firebase project."));
+      });
+    });
+  }
+}
+
+/* ---------------- Local-storage backend (used until Firebase is wired up) ---------------- */
+function localKey(){ return "ledger-data-" + householdId; }
+function loadLocalData(){
+  try{
+    const raw = localStorage.getItem(localKey());
+    return raw ? JSON.parse(raw) : {bills:[], expenses:[]};
+  }catch(e){ return {bills:[], expenses:[]}; }
+}
+function saveLocalData(data){
+  localStorage.setItem(localKey(), JSON.stringify(data));
+}
+
+/* ---------------- Household gate ---------------- */
+$("#enter-btn").addEventListener("click", enterHousehold);
+$("#code-input").addEventListener("keydown", e=>{ if(e.key==="Enter") enterHousehold(); });
+
+async function enterHousehold(){
+  const raw = $("#code-input").value.trim();
+  if(!raw){ showFatalError("Enter a household code first."); return; }
+  const code = raw.toLowerCase().replace(/[^a-z0-9-]/g,"-");
+  $("#enter-btn").textContent = "Opening…";
+  $("#gate-err").textContent = "";
+  try{
+    await ensureFirebaseReady();
+    householdId = code;
+    localStorage.setItem("ledger-household", code);
+    startListeners();
+    $("#gate").style.display = "none";
+    $("#app").style.display = "block";
+    $("#household-title").textContent = code.replace(/-/g," ").replace(/\b\w/g, c=>c.toUpperCase());
+    if(LOCAL_MODE) $("#local-banner").style.display = "block";
+  }catch(e){
+    showFatalError(e.message || "Something went wrong opening the ledger.");
+    $("#enter-btn").textContent = "Open the ledger";
+  }
+}
+
+// Auto-open if we've been here before on this device
+const savedCode = localStorage.getItem("ledger-household");
+if (savedCode) {
+  $("#code-input").value = savedCode;
+  enterHousehold();
+}
+
+/* ---------------- Firestore listeners ---------------- */
+function startListeners(){
+  if(LOCAL_MODE){
+    const data = loadLocalData();
+    bills = data.bills || [];
+    expenses = data.expenses || [];
+    render();
+    return;
+  }
+  if(unsubBills) unsubBills();
+  if(unsubExpenses) unsubExpenses();
+  const billsCol = fb.collection(db, "households", householdId, "bills");
+  const expCol = fb.collection(db, "households", householdId, "expenses");
+  unsubBills = fb.onSnapshot(billsCol, snap=>{
+    bills = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    render();
+  }, err=> showToast("Sync error: " + err.message));
+  unsubExpenses = fb.onSnapshot(expCol, snap=>{
+    expenses = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    render();
+  }, err=> showToast("Sync error: " + err.message));
+}
+
+async function saveBill(bill){
+  const id = bill.id || ("b" + Date.now());
+  const {id:_drop, ...data} = bill;
+  if(LOCAL_MODE){
+    const store = loadLocalData();
+    const idx = store.bills.findIndex(b=>b.id===id);
+    const record = {id, ...data};
+    if(idx>-1) store.bills[idx] = record; else store.bills.push(record);
+    saveLocalData(store);
+    bills = store.bills;
+    render();
+    return;
+  }
+  await fb.setDoc(fb.doc(db, "households", householdId, "bills", id), data);
+}
+async function deleteBillDoc(id){
+  if(LOCAL_MODE){
+    const store = loadLocalData();
+    store.bills = store.bills.filter(b=>b.id!==id);
+    saveLocalData(store);
+    bills = store.bills;
+    render();
+    return;
+  }
+  await fb.deleteDoc(fb.doc(db, "households", householdId, "bills", id));
+}
+async function saveExpense(exp){
+  const id = exp.id || ("e" + Date.now());
+  const {id:_drop, ...data} = exp;
+  if(LOCAL_MODE){
+    const store = loadLocalData();
+    const idx = store.expenses.findIndex(e=>e.id===id);
+    const record = {id, ...data};
+    if(idx>-1) store.expenses[idx] = record; else store.expenses.push(record);
+    saveLocalData(store);
+    expenses = store.expenses;
+    render();
+    return;
+  }
+  await fb.setDoc(fb.doc(db, "households", householdId, "expenses", id), data);
+}
+async function deleteExpenseDoc(id){
+  if(LOCAL_MODE){
+    const store = loadLocalData();
+    store.expenses = store.expenses.filter(e=>e.id!==id);
+    saveLocalData(store);
+    expenses = store.expenses;
+    render();
+    return;
+  }
+  await fb.deleteDoc(fb.doc(db, "households", householdId, "expenses", id));
+}
+
+/* ---------------- Derived data helpers ---------------- */
+function billIsPaidForMonth(bill, ym){
+  if (bill.paidMonths && Object.prototype.hasOwnProperty.call(bill.paidMonths, ym)) {
+    return !!bill.paidMonths[ym];
+  }
+  // No explicit record for this month: assume bills before the current
+  // real-world month were already paid (you weren't tracking them yet).
+  return ym < todayYM();
+}
+
+function expensesForMonth(ym){
+  return expenses.filter(e=>e.date && e.date.slice(0,7)===ym);
+}
+
+function monthStats(ym){
+  const monthBills = bills; // bills are recurring, always shown for any month
+  const totalBills = monthBills.reduce((s,b)=>s+Number(b.amount||0),0);
+  const paidBills = monthBills.filter(b=>billIsPaidForMonth(b,ym));
+  const unpaidBills = monthBills.filter(b=>!billIsPaidForMonth(b,ym));
+  const owed = unpaidBills.reduce((s,b)=>s+Number(b.amount||0),0);
+  const monthExp = expensesForMonth(ym);
+  const totalSpending = monthExp.reduce((s,e)=>s+Number(e.amount||0),0);
+  return {totalBills, paidCount:paidBills.length, totalCount:monthBills.length, owed, totalSpending, monthExp, unpaidBills};
+}
+
+/* ---------------- Rendering ---------------- */
+function render(){
+  $("#month-label").textContent = monthLabel(currentMonth);
+  renderDashboard();
+  renderBills();
+  renderExpenses();
+}
+
+function renderDashboard(){
+  const s = monthStats(currentMonth);
+  $("#stat-bills").textContent = fmt(s.totalBills);
+  $("#stat-bills-sub").textContent = `${s.paidCount} of ${s.totalCount} paid`;
+  $("#stat-spending").textContent = fmt(s.totalSpending);
+  $("#stat-total").textContent = fmt(s.totalBills + s.totalSpending);
+  $("#stat-owed").textContent = fmt(s.owed);
+  const owedCard = $("#stat-owed");
+  owedCard.className = "value" + (s.owed>0 ? " warn":" good");
+
+  // Upcoming bills: unpaid, sorted by due day
+  const upcoming = s.unpaidBills.slice().sort((a,b)=>(a.dueDay||31)-(b.dueDay||31)).slice(0,5);
+  $("#upcoming-list").innerHTML = upcoming.length ? upcoming.map(b=>billRowHtml(b)).join("") :
+    `<div class="empty-note">Everything's paid for ${monthLabel(currentMonth)}. 🎉</div>`;
+
+  // Category breakdown (bills + expenses combined for the month)
+  const byCat = {};
+  bills.forEach(b=>{ byCat[b.category]=(byCat[b.category]||0)+Number(b.amount||0); });
+  s.monthExp.forEach(e=>{ byCat[e.category]=(byCat[e.category]||0)+Number(e.amount||0); });
+  const catEntries = Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+  const maxVal = catEntries.length ? catEntries[0][1] : 1;
+  $("#category-breakdown").innerHTML = catEntries.length ? catEntries.map(([catId,val])=>{
+    const c = catById(catId);
+    const pct = Math.max(4, Math.round((val/maxVal)*100));
+    return `<div class="cat-bar-row">
+      <div class="top"><span class="name">${c.name}</span><span class="amt">${fmt(val)}</span></div>
+      <div class="cat-track"><div class="cat-fill" style="width:${pct}%; background:${c.color}"></div></div>
+    </div>`;
+  }).join("") : `<div class="empty-note">Add a bill or expense to see the breakdown.</div>`;
+
+  // Recent spending (last 5, most recent first)
+  const recent = s.monthExp.slice().sort((a,b)=> (b.date||"").localeCompare(a.date||"")).slice(0,5);
+  $("#recent-expenses").innerHTML = recent.length ? recent.map(e=>expenseRowHtml(e)).join("") :
+    `<div class="empty-note">No spending logged for ${monthLabel(currentMonth)} yet.</div>`;
+
+  attachRowHandlers();
+}
+
+function billRowHtml(b){
+  const paid = billIsPaidForMonth(b, currentMonth);
+  const c = catById(b.category);
+  return `<div class="ledger-row" data-type="bill" data-id="${b.id}">
+    <div class="dot" style="background:${c.color}"></div>
+    <div class="info" data-open-bill="${b.id}">
+      <div class="name">${escapeHtml(b.name)}</div>
+      <div class="meta">${c.name} · due day ${b.dueDay||"—"}${b.autopay?" · autopay":""}</div>
+    </div>
+    <button class="pay-toggle ${paid?"paid":""}" data-toggle-bill="${b.id}">
+      <span class="pay-amt">${fmt(b.amount)}</span>
+      <span class="pay-state">${paid?"Paid":"Mark paid"}</span>
+    </button>
+  </div>`;
+}
+
+function expenseRowHtml(e){
+  const c = catById(e.category);
+  const d = e.date ? new Date(e.date+"T00:00:00").toLocaleDateString(undefined,{month:"short",day:"numeric"}) : "";
+  return `<div class="ledger-row" data-type="expense" data-id="${e.id}">
+    <div class="dot" style="background:${c.color}"></div>
+    <div class="info">
+      <div class="name">${escapeHtml(e.note || c.name)}</div>
+      <div class="meta">${c.name} · ${d}${e.paidBy?" · "+escapeHtml(e.paidBy):""}</div>
+    </div>
+    <div class="amt due">${fmt(e.amount)}</div>
+  </div>`;
+}
+
+function renderBills(){
+  let list = bills.slice();
+  if(billFilter==="paid") list = list.filter(b=>billIsPaidForMonth(b,currentMonth));
+  if(billFilter==="unpaid") list = list.filter(b=>!billIsPaidForMonth(b,currentMonth));
+  list.sort((a,b)=>(a.dueDay||31)-(b.dueDay||31));
+  $("#bills-list").innerHTML = list.length ? list.map(b=>billRowHtml(b)).join("") :
+    `<div class="empty-note">No bills here yet. Tap + to add one.</div>`;
+  attachRowHandlers();
+}
+
+function renderExpenses(){
+  const filterBar = $("#expense-filter");
+  if(!filterBar.dataset.built){
+    filterBar.innerHTML = `<div class="chip active" data-filter="all">All</div>` +
+      CATEGORIES.map(c=>`<div class="chip" data-filter="${c.id}">${c.name}</div>`).join("");
+    filterBar.dataset.built = "1";
+    filterBar.addEventListener("click", e=>{
+      const chip = e.target.closest(".chip"); if(!chip) return;
+      [...filterBar.children].forEach(c=>c.classList.remove("active"));
+      chip.classList.add("active");
+      expenseFilter = chip.dataset.filter;
+      renderExpenses();
+    });
+  }
+  let list = expensesForMonth(currentMonth);
+  if(expenseFilter!=="all") list = list.filter(e=>e.category===expenseFilter);
+  list.sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  $("#expenses-list").innerHTML = list.length ? list.map(e=>expenseRowHtml(e)).join("") :
+    `<div class="empty-note">No spending in this category for ${monthLabel(currentMonth)}.</div>`;
+  attachRowHandlers();
+}
+
+function attachRowHandlers(){
+  document.querySelectorAll('.ledger-row[data-type="bill"] .info[data-open-bill]').forEach(info=>{
+    info.onclick = ()=> openBillModal(bills.find(b=>b.id===info.dataset.openBill));
+  });
+  document.querySelectorAll('.ledger-row[data-type="expense"]').forEach(row=>{
+    row.onclick = ()=> openExpenseModal(expenses.find(e=>e.id===row.dataset.id));
+  });
+  document.querySelectorAll('[data-toggle-bill]').forEach(btn=>{
+    btn.onclick = async (e)=>{
+      e.stopPropagation();
+      const bill = bills.find(b=>b.id===btn.dataset.toggleBill);
+      if(!bill) return;
+      const wasPaid = billIsPaidForMonth(bill, currentMonth);
+      const paidMonths = {...(bill.paidMonths||{})};
+      paidMonths[currentMonth] = !wasPaid;
+      await saveBill({...bill, paidMonths});
+      showToast(!wasPaid ? "Marked paid" : "Marked unpaid");
+    };
+  });
+}
+
+function escapeHtml(str){
+  return String(str||"").replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+}
+
+/* ---------------- Navigation ---------------- */
+document.querySelectorAll("#tabbar button").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll("#tabbar button").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+    currentView = btn.dataset.view;
+    $("#view-"+currentView).classList.add("active");
+  });
+});
+$("#see-all-bills").addEventListener("click", ()=>document.querySelector('[data-view="bills"]').click());
+$("#see-all-expenses").addEventListener("click", ()=>document.querySelector('[data-view="expenses"]').click());
+
+$("#bills-filter").addEventListener("click", e=>{
+  const chip = e.target.closest(".chip"); if(!chip) return;
+  [...$("#bills-filter").children].forEach(c=>c.classList.remove("active"));
+  chip.classList.add("active");
+  billFilter = chip.dataset.filter;
+  renderBills();
+});
+
+$("#import-bills-btn").addEventListener("click", openImportModal);
+
+function openImportModal(){
+  const existingNames = new Set(bills.map(b=>b.name.trim().toLowerCase()));
+  const rows = STARTER_BILLS.map((b,i)=>{
+    const already = existingNames.has(b.name.trim().toLowerCase());
+    return `<label class="import-row ${already?"already":""}">
+      <input type="checkbox" data-import-idx="${i}" ${already?"":"checked"}>
+      <span class="import-name">${escapeHtml(b.name)}</span>
+      <span class="import-amt mono">${fmt(b.amount)}</span>
+      ${already?'<span class="import-tag">already added</span>':""}
+    </label>`;
+  }).join("");
+  $("#modal").innerHTML = `
+    <h3 class="display">Import bills</h3>
+    <div class="field" style="color:var(--slate); font-size:13px; margin-top:-8px;">
+      These come from your spreadsheet. Uncheck any you don't want, then import — you can edit amounts and due days after.
+    </div>
+    <div class="import-list">${rows}</div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="f-cancel">Cancel</button>
+      <button class="btn btn-primary" id="f-import">Import selected</button>
+    </div>
+  `;
+  $("#f-cancel").addEventListener("click", closeModal);
+  $("#f-import").addEventListener("click", async ()=>{
+    const checked = [...document.querySelectorAll('[data-import-idx]:checked')].map(cb=>STARTER_BILLS[cb.dataset.importIdx]);
+    if(!checked.length){ closeModal(); return; }
+    $("#f-import").textContent = "Importing…";
+    for(const b of checked){
+      await saveBill({name:b.name, amount:b.amount, category:b.category, dueDay:null, autopay:false, paidMonths:{}});
+    }
+    closeModal();
+    showToast(`Imported ${checked.length} bill${checked.length===1?"":"s"}`);
+  });
+  $("#modal-backdrop").classList.add("show");
+}
+$("#next-month").addEventListener("click", ()=>{ shiftMonth(1); });
+$("#prev-month").addEventListener("click", ()=>{ shiftMonth(-1); });
+function shiftMonth(delta){
+  let [y,m] = currentMonth.split("-").map(Number);
+  m += delta;
+  while(m<1){ m+=12; y--; }
+  while(m>12){ m-=12; y++; }
+  currentMonth = y + "-" + pad2(m);
+  render();
+}
+
+/* ---------------- FAB / Add ---------------- */
+$("#fab").addEventListener("click", ()=>{
+  if(currentView==="expenses") openExpenseModal(null);
+  else openBillModal(null); // dashboard & bills view both default to adding a bill... unless on expenses
+});
+
+function closeModal(){ $("#modal-backdrop").classList.remove("show"); $("#modal").innerHTML=""; }
+$("#modal-backdrop").addEventListener("click", e=>{ if(e.target.id==="modal-backdrop") closeModal(); });
+
+function categoryOptionsHtml(selected){
+  return CATEGORIES.map(c=>`<option value="${c.id}" ${c.id===selected?"selected":""}>${c.name}</option>`).join("");
+}
+
+function openBillModal(bill){
+  editingBill = bill;
+  const isNew = !bill;
+  const b = bill || {name:"", amount:"", dueDay:1, category:"housing", autopay:false, paidMonths:{}};
+  $("#modal").innerHTML = `
+    <h3 class="display">${isNew?"Add a bill":"Edit bill"}</h3>
+    <div class="field"><label>Bill name</label><input id="f-name" type="text" value="${escapeHtml(b.name)}" placeholder="e.g. Rent"></div>
+    <div class="two-col">
+      <div class="field"><label>Amount</label><input id="f-amount" class="mono-input" type="number" step="0.01" value="${b.amount}" placeholder="0.00"></div>
+      <div class="field"><label>Due day</label><input id="f-dueday" class="mono-input" type="number" min="1" max="31" value="${b.dueDay||1}"></div>
+    </div>
+    <div class="field"><label>Category</label><select id="f-category">${categoryOptionsHtml(b.category)}</select></div>
+    <div class="toggle-row"><span>Autopay</span><div class="switch ${b.autopay?"on":""}" id="f-autopay"><div class="knob"></div></div></div>
+    <div class="toggle-row"><span>Paid for ${monthLabel(currentMonth)}</span><div class="switch ${billIsPaidForMonth(b,currentMonth)?"on":""}" id="f-paid"><div class="knob"></div></div></div>
+    <div class="modal-actions">
+      ${isNew?"":'<button class="btn btn-danger" id="f-delete">Delete</button>'}
+      <button class="btn btn-ghost" id="f-cancel">Cancel</button>
+      <button class="btn btn-primary" id="f-save">Save</button>
+    </div>
+  `;
+  $("#f-autopay").addEventListener("click", ()=>$("#f-autopay").classList.toggle("on"));
+  $("#f-paid").addEventListener("click", ()=>$("#f-paid").classList.toggle("on"));
+  $("#f-cancel").addEventListener("click", closeModal);
+  if(!isNew) $("#f-delete").addEventListener("click", async ()=>{
+    await deleteBillDoc(bill.id); closeModal(); showToast("Bill deleted");
+  });
+  $("#f-save").addEventListener("click", async ()=>{
+    const name = $("#f-name").value.trim();
+    const amount = parseFloat($("#f-amount").value);
+    if(!name || isNaN(amount)){ showToast("Add a name and amount"); return; }
+    const paidMonths = {...(b.paidMonths||{})};
+    paidMonths[currentMonth] = $("#f-paid").classList.contains("on");
+    const newBill = {
+      id: bill ? bill.id : undefined,
+      name, amount,
+      dueDay: parseInt($("#f-dueday").value)||1,
+      category: $("#f-category").value,
+      autopay: $("#f-autopay").classList.contains("on"),
+      paidMonths,
+    };
+    await saveBill(newBill);
+    closeModal(); showToast(isNew?"Bill added":"Bill updated");
+  });
+  $("#modal-backdrop").classList.add("show");
+}
+
+function openExpenseModal(exp){
+  editingExpense = exp;
+  const isNew = !exp;
+  const e = exp || {amount:"", category:"other", note:"", paidBy:"", date:todayISO()};
+  $("#modal").innerHTML = `
+    <h3 class="display">${isNew?"Log spending":"Edit entry"}</h3>
+    <div class="two-col">
+      <div class="field"><label>Amount</label><input id="f-amount" class="mono-input" type="number" step="0.01" value="${e.amount}" placeholder="0.00"></div>
+      <div class="field"><label>Date</label><input id="f-date" type="date" value="${e.date}"></div>
+    </div>
+    <div class="field"><label>Category</label><select id="f-category">${categoryOptionsHtml(e.category)}</select></div>
+    <div class="field"><label>Note</label><input id="f-note" type="text" value="${escapeHtml(e.note)}" placeholder="e.g. Groceries at Trader Joe's"></div>
+    <div class="field"><label>Paid by</label><input id="f-paidby" type="text" value="${escapeHtml(e.paidBy)}" placeholder="e.g. Alex"></div>
+    <div class="modal-actions">
+      ${isNew?"":'<button class="btn btn-danger" id="f-delete">Delete</button>'}
+      <button class="btn btn-ghost" id="f-cancel">Cancel</button>
+      <button class="btn btn-primary" id="f-save">Save</button>
+    </div>
+  `;
+  $("#f-cancel").addEventListener("click", closeModal);
+  if(!isNew) $("#f-delete").addEventListener("click", async ()=>{
+    await deleteExpenseDoc(exp.id); closeModal(); showToast("Entry deleted");
+  });
+  $("#f-save").addEventListener("click", async ()=>{
+    const amount = parseFloat($("#f-amount").value);
+    const date = $("#f-date").value;
+    if(isNaN(amount) || !date){ showToast("Add an amount and date"); return; }
+    const newExp = {
+      id: exp ? exp.id : undefined,
+      amount, date,
+      category: $("#f-category").value,
+      note: $("#f-note").value.trim(),
+      paidBy: $("#f-paidby").value.trim(),
+    };
+    await saveExpense(newExp);
+    closeModal(); showToast(isNew?"Spending logged":"Entry updated");
+  });
+  $("#modal-backdrop").classList.add("show");
+}
+</script>
+</body>
+</html>
