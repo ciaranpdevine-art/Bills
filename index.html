@@ -179,8 +179,8 @@
     display:flex;max-width:520px;margin:0 auto;z-index:15;
   }
   #tabbar button{
-    flex:1;background:none;border:none;padding:12px 4px 10px;color:var(--slate);cursor:pointer;
-    display:flex;flex-direction:column;align-items:center;gap:4px;font-family:'Inter',sans-serif;font-size:11px;
+    flex:1;min-width:0;background:none;border:none;padding:12px 2px 10px;color:var(--slate);cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;gap:4px;font-family:'Inter',sans-serif;font-size:10px;
   }
   #tabbar button svg{width:20px;height:20px;stroke:var(--slate);fill:none;stroke-width:1.7;}
   #tabbar button.active{color:var(--brass);}
@@ -389,6 +389,29 @@
       <div class="ledger" id="sv-pots-list"></div>
     </div>
 
+    <!-- SPENDING -->
+    <div class="view" id="view-spending">
+      <div class="stat-row">
+        <div class="stat-card">
+          <div class="label">Disposable Income</div>
+          <div class="value" id="sp-disposable">£0.00</div>
+          <div class="sub">money in minus bills</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Spent</div>
+          <div class="value" id="sp-spent">£0.00</div>
+          <div class="sub" id="sp-spent-sub">0 purchases</div>
+        </div>
+        <div class="stat-card" style="grid-column: 1 / -1;">
+          <div class="label">Left To Spend</div>
+          <div class="value" id="sp-left">£0.00</div>
+          <div class="sub" id="sp-left-sub"></div>
+        </div>
+      </div>
+      <div class="section-head"><h3 id="sp-list-title">Spending</h3></div>
+      <div class="ledger" id="sp-list"></div>
+    </div>
+
     <!-- CREDIT CARD -->
     <div class="view" id="view-creditcard">
       <div class="stat-row">
@@ -436,6 +459,10 @@
     <button data-view="bills">
       <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h4"/></svg>
       Bills
+    </button>
+    <button data-view="spending">
+      <svg viewBox="0 0 24 24"><path d="M3 7h15a3 3 0 0 1 3 3v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/><path d="M3 7l12-3v3"/><circle cx="17" cy="14" r="1.2"/></svg>
+      Spending
     </button>
     <button data-view="calendar">
       <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
@@ -566,12 +593,13 @@ const pad2 = n => String(n).padStart(2,"0");
 const todayYM = () => { const d = new Date(); return d.getFullYear() + "-" + pad2(d.getMonth()+1); };
 const todayISO = () => { const d = new Date(); return d.getFullYear() + "-" + pad2(d.getMonth()+1) + "-" + pad2(d.getDate()); };
 
-let db, auth, householdId, unsubBills=null, unsubEvents=null, unsubIncome=null, unsubConfig=null, unsubSavings=null, unsubCC=null;
+let db, auth, householdId, unsubBills=null, unsubEvents=null, unsubIncome=null, unsubConfig=null, unsubSavings=null, unsubCC=null, unsubSpending=null;
 let bills = [];
 let events = [];
 let income = [];
 let savingsPots = [];
 let ccEntries = [];
+let spendEntries = [];
 let seedingSavings = false;
 let currentMonth = todayYM() < MIN_MONTH ? MIN_MONTH : todayYM();
 let currentView = "dashboard";
@@ -641,8 +669,8 @@ function loadLocalData(){
   try{
     const raw = localStorage.getItem(localKey());
     const data = raw ? JSON.parse(raw) : {};
-    return {bills: data.bills || [], events: data.events || [], income: data.income || [], config: data.config || null, savings: data.savings || [], creditcard: data.creditcard || []};
-  }catch(e){ return {bills:[], events:[], income:[], config:null, savings:[], creditcard:[]}; }
+    return {bills: data.bills || [], events: data.events || [], income: data.income || [], config: data.config || null, savings: data.savings || [], creditcard: data.creditcard || [], spending: data.spending || []};
+  }catch(e){ return {bills:[], events:[], income:[], config:null, savings:[], creditcard:[], spending:[]}; }
 }
 function saveLocalData(data){
   localStorage.setItem(localKey(), JSON.stringify(data));
@@ -679,13 +707,13 @@ function maybeOfferLocalMigration(){
   const migKey = "ledger-migrated-" + householdId;
   if(localStorage.getItem(migKey) === "1") return;
   const local = loadLocalData(); // reads localStorage regardless of current mode
-  const hasLocalData = (local.bills.length + local.events.length + local.savings.length + local.creditcard.length) > 0;
+  const hasLocalData = (local.bills.length + local.events.length + local.savings.length + local.creditcard.length + local.spending.length) > 0;
   if(!hasLocalData){ localStorage.setItem(migKey, "1"); return; }
 
   $("#modal").innerHTML = `
     <h3 class="display">Import data from this device?</h3>
     <div style="color:var(--slate);font-size:14px;margin-bottom:16px;line-height:1.5;">
-      This device has ${local.bills.length} bill(s), ${local.savings.length} savings pot(s), ${local.creditcard.length} card entr${local.creditcard.length===1?"y":"ies"} and ${local.events.length} calendar event(s) saved from before syncing was set up. Import them into the shared ledger?
+      This device has ${local.bills.length} bill(s), ${local.savings.length} savings pot(s), ${local.creditcard.length} card entr${local.creditcard.length===1?"y":"ies"} ${local.spending.length} spending entr${local.spending.length===1?"y":"ies"} and ${local.events.length} calendar event(s) saved from before syncing was set up. Import them into the shared ledger?
     </div>
     <div style="color:var(--slate);font-size:12.5px;margin-bottom:20px;">If anyone has already added things on another device since switching on sync, check for duplicates afterwards.</div>
     <div class="modal-actions">
@@ -704,6 +732,7 @@ function maybeOfferLocalMigration(){
     for(const inc of local.income) await saveIncome(inc.id, inc.amount);
     for(const p of local.savings) await saveSavingsPot(p);
     for(const cc of local.creditcard) await saveCCEntry(cc);
+    for(const sp of local.spending) await saveSpendEntry(sp);
     if(local.config){
       appConfig = normalizeConfig({...appConfig, ...local.config});
       await saveConfig();
@@ -736,6 +765,7 @@ function startListeners(){
     income = data.income || [];
     savingsPots = data.savings || [];
     ccEntries = data.creditcard || [];
+    spendEntries = data.spending || [];
     appConfig = normalizeConfig(data.config);
     savingsPotsLoaded = true;
     configLoaded = true;
@@ -748,11 +778,13 @@ function startListeners(){
   if(unsubConfig) unsubConfig();
   if(unsubSavings) unsubSavings();
   if(unsubCC) unsubCC();
+  if(unsubSpending) unsubSpending();
   const billsCol = fb.collection(db, "households", householdId, "bills");
   const eventsCol = fb.collection(db, "households", householdId, "events");
   const incomeCol = fb.collection(db, "households", householdId, "income");
   const savingsCol = fb.collection(db, "households", householdId, "savings");
   const ccCol = fb.collection(db, "households", householdId, "creditcard");
+  const spendCol = fb.collection(db, "households", householdId, "spending");
   const configDoc = fb.doc(db, "households", householdId, "meta", "config");
   unsubBills = fb.onSnapshot(billsCol, snap=>{
     bills = snap.docs.map(d=>({id:d.id, ...d.data()}));
@@ -769,6 +801,10 @@ function startListeners(){
   unsubSavings = fb.onSnapshot(savingsCol, snap=>{
     savingsPots = snap.docs.map(d=>({id:d.id, ...d.data()}));
     savingsPotsLoaded = true;
+    render();
+  }, err=> showToast("Sync error: " + err.message));
+  unsubSpending = fb.onSnapshot(spendCol, snap=>{
+    spendEntries = snap.docs.map(d=>({id:d.id, ...d.data()}));
     render();
   }, err=> showToast("Sync error: " + err.message));
   unsubCC = fb.onSnapshot(ccCol, snap=>{
@@ -864,6 +900,33 @@ async function deleteSavingsPot(id){
   }
   await fb.deleteDoc(fb.doc(db, "households", householdId, "savings", id));
 }
+async function saveSpendEntry(entry){
+  const id = entry.id || ("sp" + Date.now() + Math.random().toString(36).slice(2,6));
+  const {id:_drop, ...data} = entry;
+  if(LOCAL_MODE){
+    const store = loadLocalData();
+    const idx = store.spending.findIndex(e=>e.id===id);
+    const record = {id, ...data};
+    if(idx>-1) store.spending[idx] = record; else store.spending.push(record);
+    saveLocalData(store);
+    spendEntries = store.spending;
+    render();
+    return;
+  }
+  await fb.setDoc(fb.doc(db, "households", householdId, "spending", id), data);
+}
+async function deleteSpendEntry(id){
+  if(LOCAL_MODE){
+    const store = loadLocalData();
+    store.spending = store.spending.filter(e=>e.id!==id);
+    saveLocalData(store);
+    spendEntries = store.spending;
+    render();
+    return;
+  }
+  await fb.deleteDoc(fb.doc(db, "households", householdId, "spending", id));
+}
+
 async function saveCCEntry(entry){
   const id = entry.id || ("cc" + Date.now() + Math.random().toString(36).slice(2,6));
   const {id:_drop, ...data} = entry;
@@ -980,6 +1043,7 @@ function render(){
   renderCalendar();
   renderSavings();
   renderCreditCard();
+  renderSpending();
 }
 
 function renderDashboard(){
@@ -1179,6 +1243,55 @@ function ccRowHtml(entry){
       <div class="meta">${dateStr}</div>
     </div>
     <div class="amt" style="color:${isOutgoing?"var(--parchment)":"var(--sage)"};">${fmt(entry.amount)}</div>
+  </div>`;
+}
+
+function spendingForMonth(ym){
+  return spendEntries.filter(e=>e.date && e.date.slice(0,7)===ym);
+}
+
+function renderSpending(){
+  const s = monthStats(currentMonth);
+  const disposable = getIncomeForMonth(currentMonth) - s.totalBills;
+  const entries = spendingForMonth(currentMonth).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  const spent = entries.reduce((t,e)=>t+Number(e.amount||0),0);
+  const left = disposable - spent;
+
+  $("#sp-disposable").textContent = fmt(disposable);
+  $("#sp-spent").textContent = fmt(spent);
+  $("#sp-spent-sub").textContent = `${entries.length} purchase${entries.length===1?"":"s"}`;
+  $("#sp-left").textContent = fmt(left);
+  $("#sp-left").className = "value" + (left<0 ? " warn":" good");
+
+  // Daily allowance only makes sense while viewing the real current month.
+  let leftSub = "";
+  if(currentMonth === todayYM()){
+    const now = new Date();
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+    const daysLeft = daysInMonth - now.getDate() + 1; // includes today
+    leftSub = left>0 ? `about ${fmt(left/daysLeft)} a day for ${daysLeft} day${daysLeft===1?"":"s"}` : (left<0 ? "over your disposable income" : "all spent");
+  } else {
+    leftSub = left<0 ? "over your disposable income" : "disposable income minus spending";
+  }
+  $("#sp-left-sub").textContent = leftSub;
+
+  $("#sp-list-title").textContent = `${MONTH_NAMES[parseInt(currentMonth.split("-")[1])-1]} spending`;
+  $("#sp-list").innerHTML = entries.length ? entries.map(spendRowHtml).join("") :
+    `<div class="empty-note">Nothing spent in ${monthLabel(currentMonth)} yet. Tap + to add something.</div>`;
+  document.querySelectorAll("[data-open-spend]").forEach(row=>{
+    row.onclick = ()=> openSpendModal(spendEntries.find(e=>e.id===row.dataset.openSpend));
+  });
+}
+
+function spendRowHtml(e){
+  const d = e.date ? new Date(e.date+"T00:00:00").toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"}) : "";
+  return `<div class="ledger-row" data-open-spend="${e.id}">
+    <div class="dot" style="background:var(--brass)"></div>
+    <div class="info">
+      <div class="name">${escapeHtml(e.name)}</div>
+      <div class="meta">${d}</div>
+    </div>
+    <div class="amt due">${fmt(e.amount)}</div>
   </div>`;
 }
 
@@ -1461,6 +1574,7 @@ $("#fab").addEventListener("click", ()=>{
   if(currentView==="calendar") openEventModal(null);
   else if(currentView==="savings") openPotModal(null);
   else if(currentView==="creditcard") openCCModal(null);
+  else if(currentView==="spending") openSpendModal(null);
   else openBillModal(null); // dashboard, bills, breakdown all default to adding a bill
 });
 
@@ -1907,6 +2021,38 @@ function openPotModal(pot){
     };
     await saveSavingsPot(newPot);
     closeModal(); showToast(isNew?"Pot added":"Pot updated");
+  });
+  $("#modal-backdrop").classList.add("show");
+}
+
+function openSpendModal(entry){
+  const isNew = !entry;
+  const defaultDate = currentMonth === todayYM() ? todayISO() : currentMonth + "-01";
+  const e = entry || {name:"", date: defaultDate, amount:""};
+  $("#modal").innerHTML = `
+    <h3 class="display">${isNew?"Add spending":"Edit spending"}</h3>
+    <div class="field"><label>What was it?</label><input id="f-name" type="text" value="${escapeHtml(e.name)}" placeholder="e.g. Coffee, Takeaway"></div>
+    <div class="two-col">
+      <div class="field"><label>Date</label><input id="f-date" type="date" value="${e.date}"></div>
+      <div class="field"><label>Cost</label><input id="f-amount" class="mono-input" type="number" step="0.01" value="${e.amount}" placeholder="0.00"></div>
+    </div>
+    <div class="modal-actions">
+      ${isNew?"":'<button class="btn btn-danger" id="f-delete">Delete</button>'}
+      <button class="btn btn-ghost" id="f-cancel">Cancel</button>
+      <button class="btn btn-primary" id="f-save">Save</button>
+    </div>
+  `;
+  $("#f-cancel").addEventListener("click", closeModal);
+  if(!isNew) $("#f-delete").addEventListener("click", async ()=>{
+    await deleteSpendEntry(entry.id); closeModal(); showToast("Entry deleted");
+  });
+  $("#f-save").addEventListener("click", async ()=>{
+    const name = $("#f-name").value.trim();
+    const date = $("#f-date").value;
+    const amount = parseFloat($("#f-amount").value);
+    if(!name || !date || isNaN(amount)){ showToast("Add a name, date and cost"); return; }
+    await saveSpendEntry({id: entry ? entry.id : undefined, name, date, amount});
+    closeModal(); showToast(isNew?"Spending added":"Spending updated");
   });
   $("#modal-backdrop").classList.add("show");
 }
