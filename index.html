@@ -108,6 +108,9 @@
   .cal-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
 
   /* ---------- Dashboard ---------- */
+  .seg{display:flex;background:var(--ink-2);border:1px solid var(--hairline);border-radius:12px;padding:3px;margin-bottom:16px;}
+  .seg button{flex:1;background:none;border:none;color:var(--parchment-dim);padding:9px 0;border-radius:9px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;}
+  .seg button.active{background:var(--brass);color:var(--ink);}
   .stat-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;}
   .stat-card{
     background:var(--ink-2);border:1px solid var(--hairline);border-radius:14px;padding:16px;
@@ -179,8 +182,8 @@
     display:flex;max-width:520px;margin:0 auto;z-index:15;
   }
   #tabbar button{
-    flex:1;min-width:0;background:none;border:none;padding:12px 2px 10px;color:var(--slate);cursor:pointer;
-    display:flex;flex-direction:column;align-items:center;gap:4px;font-family:'Inter',sans-serif;font-size:10px;
+    flex:1;min-width:0;background:none;border:none;padding:12px 4px 10px;color:var(--slate);cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;gap:4px;font-family:'Inter',sans-serif;font-size:11px;
   }
   #tabbar button svg{width:20px;height:20px;stroke:var(--slate);fill:none;stroke-width:1.7;}
   #tabbar button.active{color:var(--brass);}
@@ -303,57 +306,49 @@
   <div id="local-banner" style="display:none;">On this device only — add your Firebase config to sync across devices.<button class="close-banner" id="close-banner" title="Dismiss">×</button></div>
 
   <main>
-    <!-- DASHBOARD -->
-    <div class="view active" id="view-dashboard">
-      <div class="stat-row">
-        <div class="stat-card" id="tile-income" style="cursor:pointer;">
-          <div class="label">Money In</div>
-          <div class="value" id="stat-income">£0.00</div>
-          <div class="sub" id="stat-income-sub">tap to set</div>
-        </div>
-        <div class="stat-card">
-          <div class="label">Bills This Month</div>
-          <div class="value" id="stat-bills">£0.00</div>
-          <div class="sub" id="stat-bills-sub">0 bills</div>
-        </div>
-        <div class="stat-card">
-          <div class="label">Paid</div>
-          <div class="value" id="stat-paid">£0.00</div>
-          <div class="sub" id="stat-paid-sub">0 of 0</div>
-        </div>
-        <div class="stat-card">
-          <div class="label">Still Owed</div>
-          <div class="value" id="stat-owed">£0.00</div>
-          <div class="sub" id="stat-owed-sub">on unpaid bills</div>
-        </div>
-        <div class="stat-card" style="grid-column: 1 / -1;">
-          <div class="label">Disposable Income</div>
-          <div class="value" id="stat-disposable">£0.00</div>
-          <div class="sub">money in minus bills this month</div>
-        </div>
+    <!-- BILLS (list + breakdown) -->
+    <div class="view active" id="view-bills">
+      <div class="seg" id="bills-seg">
+        <button class="active" data-seg="list">Bills</button>
+        <button data-seg="breakdown">Breakdown</button>
       </div>
 
-      <div class="section-head">
-        <h3>Upcoming bills</h3>
-        <a id="see-all-bills">See all →</a>
+      <div id="bills-pane-list">
+        <div class="stat-row">
+          <div class="stat-card" id="tile-income" style="cursor:pointer;">
+            <div class="label">Money In</div>
+            <div class="value" id="stat-income">£0.00</div>
+            <div class="sub" id="stat-income-sub">tap to edit</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">Bills This Month</div>
+            <div class="value" id="stat-bills">£0.00</div>
+            <div class="sub" id="stat-bills-sub">0 bills</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">Paid</div>
+            <div class="value" id="stat-paid">£0.00</div>
+            <div class="sub" id="stat-paid-sub">0 of 0</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">Still Owed</div>
+            <div class="value" id="stat-owed">£0.00</div>
+            <div class="sub" id="stat-owed-sub">on unpaid bills</div>
+          </div>
+        </div>
+        <div class="filter-row" id="bills-filter">
+          <div class="chip active" data-filter="all">All</div>
+          <div class="chip" data-filter="unpaid">Unpaid</div>
+          <div class="chip" data-filter="paid">Paid</div>
+        </div>
+        <div class="ledger" id="bills-list"></div>
+        <button id="import-bills-btn" class="btn btn-ghost" style="margin-top:16px;width:100%;">Import bills from a list</button>
       </div>
-      <div class="ledger" id="upcoming-list"></div>
 
-      <div class="section-head">
-        <h3>Where it's going</h3>
+      <div id="bills-pane-breakdown" style="display:none;">
+        <div class="filter-row" id="breakdown-filter"></div>
+        <div id="breakdown-content"></div>
       </div>
-      <div id="category-breakdown"></div>
-    </div>
-
-    <!-- BILLS -->
-    <div class="view" id="view-bills">
-      <div class="filter-row" id="bills-filter">
-        <div class="chip active" data-filter="all">All</div>
-        <div class="chip" data-filter="unpaid">Unpaid</div>
-        <div class="chip" data-filter="paid">Paid</div>
-      </div>
-      <div class="ledger" id="bills-list"></div>
-      <button id="import-bills-btn" class="btn btn-ghost" style="margin-top:16px;width:100%;">Import bills from a list</button>
     </div>
 
     <!-- CALENDAR -->
@@ -363,12 +358,6 @@
         <h3 id="cal-list-title">This month</h3>
       </div>
       <div class="ledger" id="cal-events-list"></div>
-    </div>
-
-    <!-- BREAKDOWN -->
-    <div class="view" id="view-breakdown">
-      <div class="filter-row" id="breakdown-filter"></div>
-      <div id="breakdown-content"></div>
     </div>
 
     <!-- SAVINGS -->
@@ -405,7 +394,6 @@
         <div class="stat-card" style="grid-column: 1 / -1;">
           <div class="label">Left To Spend</div>
           <div class="value" id="sp-left">£0.00</div>
-          <div class="sub" id="sp-left-sub"></div>
         </div>
       </div>
       <div class="section-head"><h3 id="sp-list-title">Spending</h3></div>
@@ -448,15 +436,7 @@
   <button id="fab">+</button>
 
   <div id="tabbar">
-    <button class="active" data-view="dashboard">
-      <svg viewBox="0 0 24 24"><path d="M3 12l9-8 9 8"/><path d="M5 10v9h14v-9"/></svg>
-      Dashboard
-    </button>
-    <button data-view="breakdown">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v9l7 4"/></svg>
-      Breakdown
-    </button>
-    <button data-view="bills">
+    <button class="active" data-view="bills">
       <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h4"/></svg>
       Bills
     </button>
@@ -602,7 +582,7 @@ let ccEntries = [];
 let spendEntries = [];
 let seedingSavings = false;
 let currentMonth = todayYM() < MIN_MONTH ? MIN_MONTH : todayYM();
-let currentView = "dashboard";
+let currentView = "bills";
 let billFilter = "all";
 let breakdownFilter = "all";
 let editingBill = null;
@@ -1061,29 +1041,6 @@ function renderDashboard(){
   const owedCard = $("#stat-owed");
   owedCard.className = "value" + (s.owed>0 ? " warn":" good");
 
-  const disposable = incomeAmt - s.totalBills;
-  $("#stat-disposable").textContent = fmt(disposable);
-  $("#stat-disposable").className = "value" + (disposable<0 ? " warn":" good");
-
-  // Upcoming (unpaid) bills, largest first
-  const upcoming = s.unpaidBills.slice().sort((a,b)=>getBillAmount(b,currentMonth)-getBillAmount(a,currentMonth)).slice(0,5);
-  $("#upcoming-list").innerHTML = upcoming.length ? upcoming.map(b=>billRowHtml(b)).join("") :
-    `<div class="empty-note">Everything's paid for ${monthLabel(currentMonth)}. 🎉</div>`;
-
-  // Category breakdown (top few, full version lives on the Breakdown tab)
-  const byCat = {};
-  billsActiveForMonth(currentMonth).forEach(b=>{ byCat[b.category]=(byCat[b.category]||0)+getBillAmount(b,currentMonth); });
-  const catEntries = Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
-  const maxVal = catEntries.length ? catEntries[0][1] : 1;
-  $("#category-breakdown").innerHTML = catEntries.length ? catEntries.map(([catId,val])=>{
-    const c = catById(catId);
-    const pct = Math.max(4, Math.round((val/maxVal)*100));
-    return `<div class="cat-bar-row">
-      <div class="top"><span class="name">${c.name}</span><span class="amt">${fmt(val)}</span></div>
-      <div class="cat-track"><div class="cat-fill" style="width:${pct}%; background:${c.color}"></div></div>
-    </div>`;
-  }).join("") : `<div class="empty-note">Add a bill to see the breakdown.</div>`;
-
   attachRowHandlers();
 }
 
@@ -1262,18 +1219,6 @@ function renderSpending(){
   $("#sp-spent-sub").textContent = `${entries.length} purchase${entries.length===1?"":"s"}`;
   $("#sp-left").textContent = fmt(left);
   $("#sp-left").className = "value" + (left<0 ? " warn":" good");
-
-  // Daily allowance only makes sense while viewing the real current month.
-  let leftSub = "";
-  if(currentMonth === todayYM()){
-    const now = new Date();
-    const daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
-    const daysLeft = daysInMonth - now.getDate() + 1; // includes today
-    leftSub = left>0 ? `about ${fmt(left/daysLeft)} a day for ${daysLeft} day${daysLeft===1?"":"s"}` : (left<0 ? "over your disposable income" : "all spent");
-  } else {
-    leftSub = left<0 ? "over your disposable income" : "disposable income minus spending";
-  }
-  $("#sp-left-sub").textContent = leftSub;
 
   $("#sp-list-title").textContent = `${MONTH_NAMES[parseInt(currentMonth.split("-")[1])-1]} spending`;
   $("#sp-list").innerHTML = entries.length ? entries.map(spendRowHtml).join("") :
@@ -1474,7 +1419,14 @@ document.querySelectorAll("#tabbar button").forEach(btn=>{
     $("#view-"+currentView).classList.add("active");
   });
 });
-$("#see-all-bills").addEventListener("click", ()=>document.querySelector('[data-view="bills"]').click());
+document.querySelectorAll("#bills-seg button").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll("#bills-seg button").forEach(b=>b.classList.toggle("active", b===btn));
+    const showList = btn.dataset.seg === "list";
+    $("#bills-pane-list").style.display = showList ? "block" : "none";
+    $("#bills-pane-breakdown").style.display = showList ? "none" : "block";
+  });
+});
 $("#tile-income").addEventListener("click", openIncomeModal);
 $("#settings-btn").addEventListener("click", openSettingsModal);
 
