@@ -341,6 +341,10 @@
           <div class="chip" data-filter="unpaid">Unpaid</div>
           <div class="chip" data-filter="paid">Paid</div>
         </div>
+        <div class="filter-row" id="bills-sort" style="margin-top:-6px;">
+          <div class="chip active" data-sort="name">A–Z</div>
+          <div class="chip" data-sort="amount">Highest first</div>
+        </div>
         <div class="ledger" id="bills-list"></div>
       </div>
 
@@ -583,6 +587,8 @@ let seedingSavings = false;
 let currentMonth = todayYM() < MIN_MONTH ? MIN_MONTH : todayYM();
 let currentView = "bills";
 let billFilter = "all";
+let billSort = "name";
+try{ if(localStorage.getItem("ledger-bill-sort")==="amount") billSort = "amount"; }catch(e){}
 let breakdownFilter = "all";
 let editingBill = null;
 
@@ -1065,7 +1071,9 @@ function renderBills(){
   let list = billsActiveForMonth(currentMonth);
   if(billFilter==="paid") list = list.filter(b=>billIsPaidForMonth(b,currentMonth));
   if(billFilter==="unpaid") list = list.filter(b=>!billIsPaidForMonth(b,currentMonth));
-  list.sort((a,b)=>a.name.localeCompare(b.name));
+  if(billSort === "amount") list.sort((a,b)=>getBillAmount(b,currentMonth)-getBillAmount(a,currentMonth) || a.name.localeCompare(b.name));
+  else list.sort((a,b)=>a.name.localeCompare(b.name));
+  document.querySelectorAll("#bills-sort .chip").forEach(c=>c.classList.toggle("active", c.dataset.sort===billSort));
   $("#bills-list").innerHTML = list.length ? list.map(b=>billRowHtml(b)).join("") :
     `<div class="empty-note">No bills here yet. Tap + to add one.</div>`;
   attachRowHandlers();
@@ -1442,6 +1450,13 @@ document.querySelectorAll("#bills-seg button").forEach(btn=>{
 });
 $("#tile-income").addEventListener("click", openIncomeModal);
 $("#settings-btn").addEventListener("click", openSettingsModal);
+
+$("#bills-sort").addEventListener("click", e=>{
+  const chip = e.target.closest(".chip"); if(!chip) return;
+  billSort = chip.dataset.sort;
+  try{ localStorage.setItem("ledger-bill-sort", billSort); }catch(err){}
+  renderBills();
+});
 
 $("#bills-filter").addEventListener("click", e=>{
   const chip = e.target.closest(".chip"); if(!chip) return;
