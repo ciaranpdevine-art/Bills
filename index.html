@@ -342,7 +342,6 @@
           <div class="chip" data-filter="paid">Paid</div>
         </div>
         <div class="ledger" id="bills-list"></div>
-        <button id="import-bills-btn" class="btn btn-ghost" style="margin-top:16px;width:100%;">Import bills from a list</button>
       </div>
 
       <div id="bills-pane-breakdown" style="display:none;">
@@ -1452,7 +1451,6 @@ $("#bills-filter").addEventListener("click", e=>{
   renderBills();
 });
 
-$("#import-bills-btn").addEventListener("click", openImportModal);
 
 function openImportModal(){
   const existingNames = new Set(bills.map(b=>b.name.trim().toLowerCase()));
