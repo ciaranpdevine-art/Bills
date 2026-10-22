@@ -783,9 +783,10 @@ function startListeners(){
     income = snap.docs.map(d=>({id:d.id, ...d.data()}));
     render();
   }, err=> showToast("Sync error: " + err.message));
-  unsubSavings = fb.onSnapshot(savingsCol, snap=>{
+  unsubSavings = fb.onSnapshot(savingsCol, {includeMetadataChanges:true}, snap=>{
     savingsPots = snap.docs.map(d=>({id:d.id, ...d.data()}));
-    savingsPotsLoaded = true;
+    // Only trust "no pots" once the server has confirmed it (an offline cache can look empty).
+    if(!snap.metadata.fromCache) savingsPotsLoaded = true;
     render();
   }, err=> showToast("Sync error: " + err.message));
   unsubSpending = fb.onSnapshot(spendCol, snap=>{
@@ -796,7 +797,9 @@ function startListeners(){
     ccEntries = snap.docs.map(d=>({id:d.id, ...d.data()}));
     render();
   }, err=> showToast("Sync error: " + err.message));
-  unsubConfig = fb.onSnapshot(configDoc, snap=>{
+  unsubConfig = fb.onSnapshot(configDoc, {includeMetadataChanges:true}, snap=>{
+    // An offline cache can say "no settings"; wait for the server before using defaults.
+    if(!snap.exists() && snap.metadata.fromCache) return;
     appConfig = normalizeConfig(snap.exists() ? snap.data() : null);
     configLoaded = true;
     render();
@@ -804,6 +807,7 @@ function startListeners(){
 }
 
 async function saveConfig(){
+  if(!LOCAL_MODE && !configLoaded){ showToast("Still connecting, so settings weren't saved. Try again in a moment."); return; }
   if(LOCAL_MODE){
     const store = loadLocalData();
     store.config = appConfig;
